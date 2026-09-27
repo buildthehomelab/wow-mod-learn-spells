@@ -1,0 +1,32 @@
+[worldserver]
+
+###################################################################################################
+#	Learn spells on level-up (Aldrynth fork)
+###################################################################################################
+
+# Enable the module? (1: true | 0: false)
+
+LearnSpells.Enable = 1
+
+# Announce the module when the player logs in?
+
+LearnSpells.Announce = 0
+
+# Should the player receive all spells on first login?
+# Useful for instant leveling type of servers
+# (1: true | 0: false)
+
+LearnSpells.OnFirstLogin = 0
+
+# Max level Limit the player will learn spells
+# Aldrynth: 55 — levels 56–80 train from class trainers as normal
+
+LearnSpells.MaxLevel = 55
+
+# Skip spells that a quest teaches (class quests: Bear Form, Voidwalker, Defensive Stance,
+# totems, Tame Beast, Redemption, ...) so the class quests are still worth doing.
+# When the quest is done, higher ranks you missed are taught right away.
+# Also stops shamans getting free totem items on first login.
+# (1: skip quest spells | 0: auto-learn everything, upstream behaviour)
+
+LearnSpells.SkipQuestSpells = 1
