@@ -24,7 +24,7 @@ public:
             LearnSpellsForNewLevel(player, 1);
 
         // The totems are the rewards of the shaman element quests; only hand them out when those quests are skipped.
-        if (player->getClass() == CLASS_SHAMAN && !SkipQuestSpells())
+        if (player->getClass() == CLASS_SHAMAN && !KeepClassQuests())
         {
             player->AddItem(5175, 1); // Earth Totem
             player->AddItem(5176, 1); // Fire Totem
@@ -45,7 +45,7 @@ public:
     // A quest just taught rank 1 of a chain: catch up on the higher ranks that were skipped while it was missing.
     void OnPlayerCompleteQuest(Player* player, Quest const* quest) override
     {
-        if (!sConfigMgr->GetOption<bool>("LearnSpells.Enable", true) || !SkipQuestSpells())
+        if (!sConfigMgr->GetOption<bool>("LearnSpells.Enable", true) || !KeepClassQuests())
             return;
 
         // Only class quests teach class spells; skip the rescan for everything else.
@@ -64,9 +64,9 @@ private:
     std::unordered_set<uint32> m_questSpells;
     bool m_questSpellsBuilt = false;
 
-    static bool SkipQuestSpells()
+    static bool KeepClassQuests()
     {
-        return sConfigMgr->GetOption<bool>("LearnSpells.SkipQuestSpells", true);
+        return sConfigMgr->GetOption<bool>("LearnSpells.KeepClassQuests", true);
     }
 
     static uint8 GetMaxLevel()
@@ -397,13 +397,13 @@ private:
 
         uint32 family = GetSpellFamily(player);
 
-        bool skipQuestSpells = SkipQuestSpells();
-        if (skipQuestSpells)
+        bool keepClassQuests = KeepClassQuests();
+        if (keepClassQuests)
             BuildQuestSpells();
 
         for (int level = fromLevel; level <= upToLevel; level++)
         {
-            ApplyAdditionalSpells(level, family, player, skipQuestSpells);
+            ApplyAdditionalSpells(level, family, player, keepClassQuests);
 
             for (uint32 i = 0; i < sSpellMgr->GetSpellInfoStoreSize(); ++i)
             {
@@ -421,7 +421,7 @@ private:
                 if (spellInfo->PowerType == POWER_FOCUS)
                     continue;
 
-                if (IsIgnoredSpell(spellInfo->Id) || (skipQuestSpells && IsQuestSpell(spellInfo->Id)))
+                if (IsIgnoredSpell(spellInfo->Id) || (keepClassQuests && IsQuestSpell(spellInfo->Id)))
                     continue;
 
                 if (DisableMgr::IsDisabledFor(DISABLE_TYPE_SPELL, spellInfo->Id, player))
@@ -462,7 +462,7 @@ private:
         }
     }
 
-    void ApplyAdditionalSpells(uint8 level, uint32 playerSpellFamily, Player* player, bool skipQuestSpells)
+    void ApplyAdditionalSpells(uint8 level, uint32 playerSpellFamily, Player* player, bool keepClassQuests)
     {
         auto spells = m_additionalSpells.find(level);
         if (spells != m_additionalSpells.end())
@@ -475,7 +475,7 @@ private:
                 std::vector<AddSpell> additionalSpellsToTeach = spellsForPlayersFamily->second;
                 for (auto const& spell : additionalSpellsToTeach)
                 {
-                    if (player->HasSpell(spell.spellId) || (skipQuestSpells && IsQuestSpell(spell.spellId)))
+                    if (player->HasSpell(spell.spellId) || (keepClassQuests && IsQuestSpell(spell.spellId)))
                         continue;
 
                     if (spell.faction != TeamId::TEAM_NEUTRAL && spell.faction != player->GetTeamId())

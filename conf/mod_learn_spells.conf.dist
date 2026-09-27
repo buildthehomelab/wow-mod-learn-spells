@@ -23,10 +23,10 @@ LearnSpells.OnFirstLogin = 0
 
 LearnSpells.MaxLevel = 55
 
-# Skip spells that a quest teaches (class quests: Bear Form, Voidwalker, Defensive Stance,
-# totems, Tame Beast, Redemption, ...) so the class quests are still worth doing.
-# When the quest is done, higher ranks you missed are taught right away.
-# Also stops shamans getting free totem items on first login.
-# (1: skip quest spells | 0: auto-learn everything, upstream behaviour)
+# Keep the class quests: spells a quest teaches (Bear Form, Voidwalker, Defensive Stance,
+# totems, Tame Beast, Redemption, ...) are NOT auto-learned on level-up. You get them by
+# doing the class quest, and any higher ranks you already reached come right after.
+# Shamans get their totem items from the quests too, not for free on first login.
+# (1: learn quest spells from the quests | 0: auto-learn them on level-up, upstream behaviour)
 
-LearnSpells.SkipQuestSpells = 1
+LearnSpells.KeepClassQuests = 1
