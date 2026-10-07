@@ -35,6 +35,11 @@ Removed from `m_additionalSpells` (and added to `m_ignoreSpells` where relevant)
 
 Kept trainer-style extras ≤55 (parry, dual wield, pet basics, mail/plate, capital teleports/portals, Redemption / Life Tap trainer ranks, etc.).
 
+## Requirements
+
+- [AzerothCore](https://www.azerothcore.org/) wotlk (master) and a WoW 3.3.5a (12340) client.
+- No SQL, no client patch and no other module.
+
 ## Install
 
 ```bash
@@ -43,4 +48,28 @@ git clone https://github.com/buildthehomelab/wow-mod-learn-spells.git mod-learn-
 # reconfigure CMake, rebuild, copy conf.dist → conf, restart worldserver
 ```
 
-Upstream credit: AzerothCore catalogue module authors.
+## Troubleshooting
+
+- **A character didn't get a spell at level 56 or above.** Auto-learning stops at
+  `LearnSpells.MaxLevel` (55). Train from the class trainer as usual.
+- **Bear Form, Voidwalker, a stance or a totem wasn't learned on level-up.** With
+  `LearnSpells.KeepClassQuests = 1` those come from the class quest. Set it to 0 to auto-learn
+  them like upstream.
+- **A mount or a rare spell rank is missing.** Quest mounts and rare trainer-book ranks are left
+  out on purpose; complete the quest or find the book.
+- **A new character starts with no spells.** `LearnSpells.OnFirstLogin` is 0 by default; set it
+  to 1 to give a new character its spells on first login.
+
+## Credits
+
+Author: [buildthehomelab](https://github.com/buildthehomelab)
+
+Based on [VenomekPL/mod-learn-spells](https://github.com/VenomekPL/mod-learn-spells) (the
+Aldrynth fork: auto-learn through level 55, quest mounts and books left out), which is a fork of
+[azerothcore/mod-learn-spells](https://github.com/azerothcore/mod-learn-spells) by the
+AzerothCore community. Changes here: `LearnSpells.KeepClassQuests`, which keeps class quests
+meaningful.
+
+## License
+
+GNU Affero General Public License v3.0, see [LICENSE.md](LICENSE.md).
