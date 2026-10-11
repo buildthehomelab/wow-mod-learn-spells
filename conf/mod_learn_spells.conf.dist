@@ -5,6 +5,8 @@
 ###################################################################################################
 
 # Enable the module? (1: true | 0: false)
+# When enabled, spells are learned on level-up, and every login catches up on anything
+# missed so far (levels gained before the module was installed, for example).
 
 LearnSpells.Enable = 1
 

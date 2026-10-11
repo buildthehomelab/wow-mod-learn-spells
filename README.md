@@ -5,9 +5,10 @@ Fork of [azerothcore/mod-learn-spells](https://github.com/azerothcore/mod-learn-
 ## Behaviour
 
 - Auto-learns normal **trainer** class spells on level-up through **`LearnSpells.MaxLevel` (55)**.
+- **Every login catches up**: a character missing a spell it should already have (it leveled before the module was installed, or a rank was held back until the previous rank was learned) gets it the next time it logs in.
 - Levels **56–80**: train from class trainers as usual (talent resets unchanged).
 - **Quest mounts** and **rare trainer-book ranks** are **not** auto-taught — complete quests / farm books as blizzlike.
-- **Class quests are kept** (`LearnSpells.KeepClassQuests`): spells a quest teaches are learned from the quest, not on level-up. The first time it runs, the module reads every quest's reward spell (following the "teach" spell to what it learns) and never auto-learns those: Bear Form, Aquatic Form, Cure Poison, Voidwalker / Succubus / Felhunter, Defensive / Berserker Stance, shaman totems, Tame Beast and pet training, Redemption, ...
+- **Class quests are kept** (`LearnSpells.KeepClassQuests`): spells a quest teaches are learned from the quest, not on level-up. The first time it runs, the module reads every quest's reward spell (following the "teach" spell to what it learns) and never auto-learns those: Bear Form, Aquatic Form, Cure Poison, Voidwalker / Succubus / Felhunter, Defensive / Berserker Stance, shaman totems, Tame Beast and pet training, Redemption, ... A quest that only casts a buff on you as a reward (Arcane Intellect, Mark of the Wild) doesn't count.
 - Finishing a class quest immediately teaches the higher ranks of that spell you skipped while it was missing (e.g. Healing Stream Totem ranks after *Call of Water*).
 - Shamans only get free totem items on first login when `KeepClassQuests = 0`.
 

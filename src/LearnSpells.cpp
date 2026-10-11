@@ -8,11 +8,13 @@
 #include "ScriptMgr.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
+#include <mutex>
 
 class LearnSpellsOnLevelUp : public PlayerScript
 {
 public:
     LearnSpellsOnLevelUp() : PlayerScript("LearnSpellsOnLevelUp", {
+        PLAYERHOOK_ON_LOGIN,
         PLAYERHOOK_ON_FIRST_LOGIN,
         PLAYERHOOK_ON_LEVEL_CHANGED,
         PLAYERHOOK_ON_PLAYER_COMPLETE_QUEST
@@ -31,6 +33,14 @@ public:
             player->AddItem(5177, 1); // Water Totem
             player->AddItem(5178, 1); // Air Totem
         }
+    }
+
+    // Catch up on what the level-up scan no longer reaches: levels gained before the module was
+    // installed, or a rank that was held back until its previous rank was learned.
+    void OnPlayerLogin(Player* player) override
+    {
+        if (sConfigMgr->GetOption<bool>("LearnSpells.Enable", true))
+            LearnSpellsForNewLevel(player, 1);
     }
 
     void OnPlayerLevelChanged(Player* player, uint8 oldLevel) override
@@ -59,10 +69,29 @@ public:
     }
 
 private:
-    // Spells taught by quest rewards (class quests: Bear Form, Voidwalker, stances, totems, pet taming, ...).
+    // Spells a quest reward teaches (class quests: Bear Form, Voidwalker, stances, totems, pet taming, ...).
     // Built once, after the quest templates are loaded.
     std::unordered_set<uint32> m_questSpells;
     bool m_questSpellsBuilt = false;
+
+    // Every spell per SpellFamilyName, in id order. The spell store does not change after startup,
+    // so one pass over it is enough; a rescan from level 1 then only walks its own class.
+    std::unordered_map<uint32, std::vector<SpellInfo const*>> m_familySpells;
+    std::once_flag m_familySpellsBuilt;
+
+    std::vector<SpellInfo const*> const& GetFamilySpells(uint32 family)
+    {
+        std::call_once(m_familySpellsBuilt, [this]()
+        {
+            for (uint32 i = 0; i < sSpellMgr->GetSpellInfoStoreSize(); ++i)
+                if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(i))
+                    m_familySpells[spellInfo->SpellFamilyName].push_back(spellInfo);
+        });
+
+        static std::vector<SpellInfo const*> const empty;
+        auto itr = m_familySpells.find(family);
+        return itr != m_familySpells.end() ? itr->second : empty;
+    }
 
     static bool KeepClassQuests()
     {
@@ -74,19 +103,26 @@ private:
         return sConfigMgr->GetOption<uint8>("LearnSpells.MaxLevel", 55);
     }
 
-    void AddQuestSpell(uint32 spellId, uint8 depth = 0)
+    // Follows a quest reward spell to the spells it teaches. Only LEARN_SPELL targets count: a reward
+    // that just casts a buff on the player (Arcane Intellect in Silverpine, Mark of the Wild in Mulgore)
+    // teaches nothing, and neither does a reward spell that no longer exists (old priest racial quests).
+    void AddQuestSpell(uint32 spellId, std::unordered_set<uint32>& visited, uint8 depth = 0)
     {
-        if (!spellId || depth > 3 || !m_questSpells.insert(spellId).second)
+        if (!spellId || depth > 3 || !visited.insert(spellId).second)
             return;
 
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
         if (!spellInfo)
             return;
 
-        // Quest rewards usually cast a "teach" spell whose effect learns the real one.
         for (SpellEffectInfo const& effect : spellInfo->GetEffects())
+        {
+            if (effect.Effect == SPELL_EFFECT_LEARN_SPELL && effect.TriggerSpell)
+                m_questSpells.insert(effect.TriggerSpell);
+
             if (effect.Effect == SPELL_EFFECT_LEARN_SPELL || effect.Effect == SPELL_EFFECT_TRIGGER_SPELL)
-                AddQuestSpell(effect.TriggerSpell, depth + 1);
+                AddQuestSpell(effect.TriggerSpell, visited, depth + 1);
+        }
     }
 
     void BuildQuestSpells()
@@ -96,12 +132,14 @@ private:
 
         m_questSpellsBuilt = true;
 
+        std::unordered_set<uint32> visited;
+
         for (auto const& [questId, quest] : sObjectMgr->GetQuestTemplates())
         {
             if (quest->GetRewSpellCast() > 0)
-                AddQuestSpell(uint32(quest->GetRewSpellCast()));
+                AddQuestSpell(uint32(quest->GetRewSpellCast()), visited);
 
-            AddQuestSpell(quest->GetRewSpell());
+            AddQuestSpell(quest->GetRewSpell(), visited);
         }
     }
 
@@ -396,6 +434,7 @@ private:
             upToLevel = maxLevel;
 
         uint32 family = GetSpellFamily(player);
+        std::vector<SpellInfo const*> const& familySpells = GetFamilySpells(family);
 
         bool keepClassQuests = KeepClassQuests();
         if (keepClassQuests)
@@ -405,14 +444,9 @@ private:
         {
             ApplyAdditionalSpells(level, family, player, keepClassQuests);
 
-            for (uint32 i = 0; i < sSpellMgr->GetSpellInfoStoreSize(); ++i)
+            for (SpellInfo const* spellInfo : familySpells)
             {
-                SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(i);
-
-                if (!spellInfo)
-                    continue;
-
-                if (spellInfo->SpellFamilyName != family)
+                if (spellInfo->BaseLevel != uint32(level) && sSpellMgr->IsSpellValid(spellInfo))
                     continue;
 
                 if ((spellInfo->AttributesEx7 & SPELL_ATTR7_ALLIANCE_SPECIFIC_SPELL && player->GetTeamId() != TEAM_ALLIANCE) || (spellInfo->AttributesEx7 & SPELL_ATTR7_HORDE_SPECIFIC_SPELL && player->GetTeamId() != TEAM_HORDE))
@@ -425,9 +459,6 @@ private:
                     continue;
 
                 if (DisableMgr::IsDisabledFor(DISABLE_TYPE_SPELL, spellInfo->Id, player))
-                    continue;
-
-                if (spellInfo->BaseLevel != uint32(level) && sSpellMgr->IsSpellValid(spellInfo))
                     continue;
 
                 bool valid = false;
